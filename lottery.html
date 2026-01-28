@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>灵签 · 新年运势</title>
+
+  <!-- 精致字体选择 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Noto+Serif+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==================== 设计系统变量 ==================== */
+    :root {
+      /* 金色体系 */
+      --gold-primary: #E6C288;
+      --gold-light: #F4D9A8;
+      --gold-mid: #C5A065;
+      --gold-dark: #8B6C42;
+      --gold-deep: #5A4632;
+
+      /* 背景体系 */
+      --bg-abyss: #0a0805;
+      --bg-deep: #14100a;
+      --bg-mid: #1f1a12;
+      --bg-surface: #2a2318;
+
+      /* 语义色彩 */
+      --text-primary: #FFF5E0;
+      --text-secondary: #E6C288;
+      --text-muted: #8B6C42;
+
+      /* 粒子颜色 */
+      --particle-gold: #FFD700;
+      --particle-amber: #FFA500;
+      --particle-warm: #FFE4B5;
+
+      /* 动画时长 */
+      --ritual-duration: 1.2s;
+      --loading-duration: 2.5s;
+
+      /* 间距 */
+      --space-xs: 0.5rem;
+      --space-sm: 1rem;
+      --space-md: 1.5rem;
+      --space-lg: 2rem;
+      --space-xl: 3rem;
+    }
+
+    /* ==================== 全局重置 ==================== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 16px;
+      height: 100%;
+    }
+
+    body {
+      font-family: 'Noto Serif SC', 'Cormorant Garamond', serif;
+      background: linear-gradient(180deg, var(--bg-abyss) 0%, var(--bg-deep) 50%, var(--bg-mid) 100%);
+      color: var(--text-primary);
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+    }
+
+    /* 噪点纹理 */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      opacity: 0.04;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ==================== Canvas 层 ==================== */
+    .canvas-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #dustCanvas {
+      z-index: 100;
+    }
+
+    #steamCanvas {
+      z-index: 50;
+      mix-blend-mode: screen;
+      opacity: 0;
+      transition: opacity var(--ritual-duration) ease-in-out;
+    }
+
+    #matrixCanvas {
+      z-index: 200;
+    }
+
+    /* ==================== 屏幕容器 ==================== */
+    .screen {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity var(--ritual-duration) ease-in-out;
+      z-index: 10;
+    }
+
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-xl);
+    }
+
+    .screen.visible {
+      opacity: 1;
+    }
+
+    /* ==================== 加载屏 ==================== */
+    #loading-screen {
+      background: radial-gradient(ellipse at center, var(--bg-surface) 0%, var(--bg-deep) 50%, var(--bg-abyss) 100%);
+      z-index: 150;
+    }
+
+    .loading-text {
+      position: absolute;
+      top: 45%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--gold-primary);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      opacity: 0.6;
+    }
+
+    /* ==================== 首页 ==================== */
+    #screen1 {
+      background: radial-gradient(ellipse at center bottom, rgba(230, 194, 136, 0.05) 0%, transparent 60%);
+    }
+
+    .main-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(3rem, 12vw, 6rem);
+      font-weight: 900;
+      text-align: center;
+      background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold-primary) 30%, var(--gold-dark) 70%, var(--gold-deep) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 40px rgba(230, 194, 136, 0.3));
+      margin-bottom: var(--space-md);
+      animation: title-float 6s ease-in-out infinite;
+    }
+
+    .subtitle {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(0.7rem, 2vw, 0.9rem);
+      font-weight: 300;
+      letter-spacing: 0.5em;
+      text-transform: uppercase;
+      color: var(--gold-mid);
+      margin-bottom: var(--space-xl);
+      opacity: 0.7;
+    }
+
+    /* ==================== 抽签中 ==================== */
+    #screen2 {
+      background: radial-gradient(circle at center, rgba(230, 194, 136, 0.08) 0%, transparent 50%);
+      flex-direction: column;
+    }
+
+    .lottery-container {
+      position: relative;
+      width: 200px;
+      height: 280px;
+      perspective: 1000px;
+      flex-shrink: 0;
+    }
+
+    .lottery-cylinder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(180deg,
+        rgba(197, 160, 101, 0.3) 0%,
+        rgba(139, 108, 66, 0.2) 50%,
+        rgba(90, 70, 50, 0.3) 100%
+      );
+      border-radius: 20px 20px 40px 40px;
+      border: 2px solid rgba(230, 194, 136, 0.3);
+      box-shadow:
+        0 0 60px rgba(230, 194, 136, 0.2),
+        inset 0 0 60px rgba(0, 0, 0, 0.5),
+        inset 0 0 20px rgba(230, 194, 136, 0.1);
+      transform-origin: center center;
+    }
+
+    /* 摇签动画类 - 通过 JS 添加 */
+    .lottery-cylinder.shaking {
+      animation: cylinder-shake 0.6s ease-in-out !important;
+    }
+
+    .lottery-cylinder::before {
+      content: '灵';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      margin-left: -2.5rem;
+      margin-top: -2.5rem;
+      font-family: 'Noto Serif SC', serif;
+      font-size: 5rem;
+      font-weight: 900;
+      color: var(--gold-primary);
+      text-shadow: 0 0 30px rgba(230, 194, 136, 0.5);
+    }
+
+    /* 摇签时"灵"字的动画 */
+    .lottery-cylinder.shaking::before {
+      animation: spirit-shake 0.15s ease-in-out !important;
+    }
+
+    .lottery-cylinder::after {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      right: 20px;
+      height: 60px;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.4), transparent);
+      border-radius: 20px 20px 0 0;
+      pointer-events: none;
+    }
+
+    .shaking-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.3em;
+      color: var(--gold-mid);
+      white-space: nowrap;
+      opacity: 0.7;
+      margin-top: var(--space-md);
+      margin-bottom: var(--space-lg);
+      flex-shrink: 0;
+    }
+
+    /* 摇签按钮特殊样式 */
+    #shakeBtn {
+      flex-shrink: 0;
+      display: none;
+    }
+
+    /* ==================== 结果展示 ==================== */
+    #screen4 {
+      background: radial-gradient(ellipse at center, rgba(230, 194, 136, 0.05) 0%, transparent 60%);
+    }
+
+    .fortune-card {
+      position: relative;
+      max-width: 400px;
+      width: 90%;
+      padding: var(--space-xl);
+      background: linear-gradient(135deg,
+        rgba(42, 35, 24, 0.9) 0%,
+        rgba(31, 26, 18, 0.95) 50%,
+        rgba(20, 16, 10, 0.9) 100%
+      );
+      border: 1px solid rgba(230, 194, 136, 0.2);
+      border-radius: 20px;
+      box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.5),
+        0 0 80px rgba(230, 194, 136, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+      animation: card-appear 1s ease-out forwards;
+    }
+
+    .fortune-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -150%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        120deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 70%
+      );
+      transform: skewX(-25deg);
+      animation: shine-sweep 3s ease-in-out infinite;
+    }
+
+    .fortune-header {
+      text-align: center;
+      margin-bottom: var(--space-lg);
+      padding-bottom: var(--space-md);
+      border-bottom: 1px solid rgba(230, 194, 136, 0.1);
+    }
+
+    .fortune-type {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--gold-mid);
+      padding: 0.4em 1em;
+      background: rgba(230, 194, 136, 0.1);
+      border: 1px solid rgba(230, 194, 136, 0.2);
+      border-radius: 9999px;
+      margin-bottom: var(--space-sm);
+    }
+
+    .fortune-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem, 6vw, 3rem);
+      font-weight: 700;
+      color: var(--gold-primary);
+      text-shadow: 0 0 30px rgba(230, 194, 136, 0.3);
+    }
+
+    .fortune-content {
+      font-size: 1rem;
+      line-height: 2;
+      color: var(--text-primary);
+      text-align: center;
+      margin-bottom: var(--space-lg);
+    }
+
+    .fortune-poem {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 1.1rem;
+      color: var(--gold-mid);
+      text-align: center;
+      line-height: 1.8;
+      padding: var(--space-md);
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      margin-bottom: var(--space-lg);
+    }
+
+    /* ==================== 按钮系统 ==================== */
+    .btn-primary {
+      position: relative;
+      display: block;
+      margin: 0 auto;
+      padding: var(--space-sm) var(--space-xl);
+      font-family: 'Noto Serif SC', serif;
+      font-size: 1rem;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold-primary);
+      background: linear-gradient(135deg,
+        rgba(230, 194, 136, 0.15) 0%,
+        rgba(197, 160, 101, 0.1) 100%
+      );
+      border: 1px solid rgba(230, 194, 136, 0.4);
+      border-radius: 9999px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      box-shadow:
+        0 4px 20px rgba(230, 194, 136, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg,
+        rgba(230, 194, 136, 0.25) 0%,
+        rgba(197, 160, 101, 0.2) 100%
+      );
+      border-color: var(--gold-primary);
+      box-shadow:
+        0 0 30px rgba(230, 194, 136, 0.4),
+        0 0 60px rgba(230, 194, 136, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .btn-primary:hover::before {
+      left: 100%;
+    }
+
+    .btn-primary:active {
+      transform: translateY(0) scale(0.95);
+      box-shadow:
+        0 2px 10px rgba(230, 194, 136, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    /* ==================== 装饰元素 ==================== */
+    .deco-corner {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      pointer-events: none;
+      opacity: 0.3;
+    }
+
+    .deco-corner-tl {
+      top: 20px;
+      left: 20px;
+      border-top: 2px solid var(--gold-dark);
+      border-left: 2px solid var(--gold-dark);
+    }
+
+    .deco-corner-tr {
+      top: 20px;
+      right: 20px;
+      border-top: 2px solid var(--gold-dark);
+      border-right: 2px solid var(--gold-dark);
+    }
+
+    .deco-corner-bl {
+      bottom: 20px;
+      left: 20px;
+      border-bottom: 2px solid var(--gold-dark);
+      border-left: 2px solid var(--gold-dark);
+    }
+
+    .deco-corner-br {
+      bottom: 20px;
+      right: 20px;
+      border-bottom: 2px solid var(--gold-dark);
+      border-right: 2px solid var(--gold-dark);
+    }
+
+    /* ==================== 动画定义 ==================== */
+    @keyframes title-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes cylinder-shake {
+      0% { transform: rotate(0deg) translateX(0) translateY(0); }
+      10% { transform: rotate(-15deg) translateX(-8px) translateY(-3px); }
+      20% { transform: rotate(12deg) translateX(6px) translateY(2px); }
+      30% { transform: rotate(-10deg) translateX(-5px) translateY(-2px); }
+      40% { transform: rotate(8deg) translateX(4px) translateY(1px); }
+      50% { transform: rotate(-6deg) translateX(-3px) translateY(-1px); }
+      60% { transform: rotate(5deg) translateX(3px) translateY(1px); }
+      70% { transform: rotate(-4deg) translateX(-2px) translateY(0px); }
+      80% { transform: rotate(3deg) translateX(2px) translateY(0px); }
+      90% { transform: rotate(-2deg) translateX(-1px) translateY(0px); }
+      100% { transform: rotate(0deg) translateX(0) translateY(0); }
+    }
+
+    @keyframes spirit-shake {
+      0%, 100% { transform: translateY(0); }
+      25% { transform: translateY(-8px); }
+      50% { transform: translateY(5px); }
+      75% { transform: translateY(-3px); }
+    }
+
+    @keyframes shine-sweep {
+      0% { left: -150%; }
+      50%, 100% { left: 150%; }
+    }
+
+    @keyframes card-appear {
+      0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(230, 194, 136, 0.3); }
+      50% { box-shadow: 0 0 40px rgba(230, 194, 136, 0.5); }
+    }
+
+    /* ==================== 响应式 ==================== */
+    @media (max-width: 768px) {
+      .deco-corner {
+        width: 40px;
+        height: 40px;
+      }
+
+      .fortune-card {
+        padding: var(--space-lg);
+      }
+
+      .lottery-container {
+        width: 160px;
+        height: 220px;
+      }
+
+      .lottery-cylinder::before {
+        font-size: 4rem;
+      }
+    }
+
+    /* ==================== 辅助功能 ==================== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Canvas 层 -->
+  <canvas id="dustCanvas" class="canvas-layer"></canvas>
+  <canvas id="steamCanvas" class="canvas-layer"></canvas>
+
+  <!-- 屏幕 1: 首页 -->
+  <div id="screen1" class="screen active visible">
+    <div class="deco-corner deco-corner-tl"></div>
+    <div class="deco-corner deco-corner-tr"></div>
+    <div class="deco-corner deco-corner-bl"></div>
+    <div class="deco-corner deco-corner-br"></div>
+
+    <h1 class="main-title">灵签</h1>
+    <p class="subtitle">Divination · Fortune</p>
+
+    <button class="btn-primary" id="startBtn">
+      求取灵签
+    </button>
+  </div>
+
+  <!-- 屏幕 2: 抽签中 -->
+  <div id="screen2" class="screen">
+    <div class="lottery-container">
+      <div class="lottery-cylinder" id="cylinder"></div>
+    </div>
+    <p class="shaking-text" id="shakingText">点击下方按钮开始摇签</p>
+    <button class="btn-primary" id="shakeBtn">
+      摇签
+    </button>
+  </div>
+
+  <!-- 屏幕 4: 结果 -->
+  <div id="screen4" class="screen">
+    <div class="deco-corner deco-corner-tl"></div>
+    <div class="deco-corner deco-corner-tr"></div>
+    <div class="deco-corner deco-corner-bl"></div>
+    <div class="deco-corner deco-corner-br"></div>
+
+    <div class="fortune-card">
+      <div class="fortune-header">
+        <span class="fortune-type">新年运势</span>
+        <h2 class="fortune-title" id="fortuneTitle">上上签</h2>
+      </div>
+      <p class="fortune-content" id="fortuneContent">
+        喜气盈门，福星高照。新年伊始，万象更新。
+        此签预示着未来一年将是充满机遇与收获的一年。
+      </p>
+      <p class="fortune-poem" id="fortunePoem">
+        "金龙腾飞万里春，福禄寿喜进门庭。<br>
+        心想事成皆如意，步步高升向光明。"
+      </p>
+      <button class="btn-primary" id="resetBtn">
+        再求一签
+      </button>
+    </div>
+  </div>
+
+  <!-- 加载屏 -->
+  <div id="loading-screen" class="screen">
+    <canvas id="matrixCanvas"></canvas>
+    <p class="loading-text">FORTUNE UNFOLDING</p>
+  </div>
+
+  <script>
+    // ==================== 配置 ====================
+    const CONFIG = {
+      colors: ['#E6C288', '#C5A065', '#FFD700', '#FFA500', '#FFE4B5'],
+      fortunes: [
+        {
+          type: '上上签',
+          title: '大吉大利',
+          content: '鸿运当头，万事亨通。此乃难得之吉兆，预示着在未来的一段时间内，无论事业、财运还是感情，都将迎来顺遂的发展。',
+          poem: '紫气东来福满门，金榜题名步青云。财源广进达三江，好事成双喜临门。'
+        },
+        {
+          type: '上吉签',
+          title: '福星高照',
+          content: '吉人自有天相，福星常伴左右。此签显示你近期的运势正在上升期，把握机会，勇敢前行，必将收获丰硕成果。',
+          poem: '春风得意马蹄疾，一日看尽长安花。前程似锦路宽广，功成名就人人夸。'
+        },
+        {
+          type: '中吉签',
+          title: '平稳顺遂',
+          content: '运势平稳，循序渐进。虽无大起大落，但稳步前进亦可达成目标。保持耐心，坚持努力，成功指日可待。',
+          poem: '千里之行始足下，积水成渊聚沙塔。稳扎稳打步步高，水到渠成开红花。'
+        },
+        {
+          type: '小吉签',
+          title: '小有收获',
+          content: '小有成就，喜忧参半。虽无惊天动地的大喜，但日常生活中的小确幸依然值得珍惜。保持乐观，好运自来。',
+          poem: '梅花香自苦寒来，小有成就亦开怀。积少成多终有日，守得云开见月明。'
+        },
+        {
+          type: '吉签',
+          title: '否极泰来',
+          content: '困难即将过去，曙光就在眼前。经历波折后终将迎来转机，坚持下去，黎明的曙光已不远。',
+          poem: '山重水复疑无路，柳暗花明又一村。守得云开见月明，苦尽甘来福满门。'
+        },
+        {
+          type: '上上签',
+          title: '心想事成',
+          content: '愿望即将实现，梦想触手可及。这是你长久努力的结果，保持初心，继续前进，更多美好正在前方等待。',
+          poem: '有志者事竟成，破釜沉舟百二秦关终属楚。苦心人天不负，卧薪尝胆三千越甲可吞吴。'
+        },
+        {
+          type: '中吉签',
+          title: '贵人相助',
+          content: '危难之时遇贵人，困境之中得援手。留意身边出现的机遇和善意之人，他们将成为你成功路上的助力。',
+          poem: '他乡遇故知，患难见真情。贵人来相助，事业展鹏程。'
+        },
+        {
+          type: '上吉签',
+          title: '财源广进',
+          content: '财运亨通，收益丰厚。无论是正财还是偏财，都将有不错的收获。把握投资机会，理性理财，财富自然来。',
+          poem: '财运亨通达四海，金银财宝进门来。日进斗金不是梦，富贵荣华乐开怀。'
+        }
+      ]
+    };
+
+    // ==================== UI 控件 ====================
+    const UI = {
+      screens: document.querySelectorAll('.screen'),
+      loading: document.getElementById('loading-screen'),
+      dust: document.getElementById('dustCanvas'),
+      steam: document.getElementById('steamCanvas'),
+      matrix: document.getElementById('matrixCanvas'),
+      cylinder: document.getElementById('cylinder'),
+      shakingText: document.getElementById('shakingText'),
+      startBtn: document.getElementById('startBtn'),
+      shakeBtn: document.getElementById('shakeBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      fortuneTitle: document.getElementById('fortuneTitle'),
+      fortuneContent: document.getElementById('fortuneContent'),
+      fortunePoem: document.getElementById('fortunePoem')
+    };
+
+    const CTX = {
+      dust: UI.dust.getContext('2d', { alpha: true }),
+      steam: UI.steam.getContext('2d', { alpha: true }),
+      matrix: UI.matrix.getContext('2d', { alpha: false })
+    };
+
+    // ==================== 状态管理 ====================
+    let isAnimating = false;
+    let lastFortuneIndex = -1;
+    let activeLoops = { dust: true, steam: false, loading: false };
+    let dustParticles = [];
+    let steamParticles = [];
+    let matrixDrops = [];
+
+    // ==================== 工具函数 ====================
+    function debounce(func, wait) {
+      let timeout;
+      return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+      };
+    }
+
+    function resizeCanvases() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      [UI.dust, UI.steam, UI.matrix].forEach(c => {
+        c.width = w;
+        c.height = h;
+      });
+      initDust();
+      initMatrix();
+    }
+
+    function getRandomFortune() {
+      let index;
+      do {
+        index = Math.floor(Math.random() * CONFIG.fortunes.length);
+      } while (index === lastFortuneIndex && CONFIG.fortunes.length > 1);
+      lastFortuneIndex = index;
+      return CONFIG.fortunes[index];
+    }
+
+    function showLoading() {
+      return new Promise((resolve) => {
+        initMatrix();
+        activeLoops.loading = true;
+        UI.loading.classList.add('active');
+
+        setTimeout(() => {
+          UI.loading.classList.add('visible');
+          drawMatrix();
+
+          setTimeout(() => {
+            UI.loading.classList.remove('visible');
+            setTimeout(() => {
+              UI.loading.classList.remove('active');
+              activeLoops.loading = false;
+              resolve();
+            }, 1200);
+          }, 1500);
+        }, 50);
+      });
+    }
+
+    function switchToScreen(screenId) {
+      return new Promise((resolve) => {
+        const current = document.querySelector('.screen.active:not(#loading-screen)');
+        const next = document.getElementById(screenId);
+
+        if (current) {
+          current.classList.remove('visible');
+          setTimeout(() => current.classList.remove('active'), 1200);
+        }
+
+        setTimeout(() => {
+          next.classList.add('active');
+          if (screenId === 'screen2') {
+            activeLoops.steam = true;
+            steamParticles = [];
+            updateSteam();
+          }
+          setTimeout(() => {
+            next.classList.add('visible');
+            if (activeLoops.steam) UI.steam.style.opacity = '1';
+            resolve();
+          }, 50);
+        }, 1200);
+      });
+    }
+
+    // ==================== 金粉粒子系统 ====================
+    function initDust() {
+      const count = Math.min(100, Math.floor((UI.dust.width * UI.dust.height) / 8000));
+      dustParticles = Array.from({ length: count }, () => ({
+        x: Math.random() * UI.dust.width,
+        y: Math.random() * UI.dust.height,
+        r: Math.random() * 2 + 0.5,
+        sy: Math.random() * 0.5 + 0.1,
+        sx: (Math.random() - 0.5) * 0.3,
+        color: CONFIG.colors[Math.floor(Math.random() * CONFIG.colors.length)],
+        alpha: Math.random() * 0.6 + 0.1,
+        osc: Math.random() * Math.PI * 2
+      }));
+    }
+
+    function updateDust() {
+      if (!activeLoops.dust) return;
+      const ctx = CTX.dust;
+      const w = UI.dust.width;
+      const h = UI.dust.height;
+      const now = Date.now();
+
+      ctx.clearRect(0, 0, w, h);
+
+      for (let i = 0; i < dustParticles.length; i++) {
+        const p = dustParticles[i];
+        p.y += p.sy;
+        p.x += p.sx;
+
+        if (p.y > h) p.y = -5;
+        if (p.x > w) p.x = 0;
+        else if (p.x < 0) p.x = w;
+
+        const alpha = p.alpha + Math.sin(now / 500 + p.osc) * 0.15;
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+      requestAnimationFrame(updateDust);
+    }
+
+    // ==================== 蒸汽粒子系统 ====================
+    function createSteamParticle() {
+      return {
+        x: Math.random() * UI.steam.width,
+        y: UI.steam.height + 50,
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: -0.5 - Math.random() * 1,
+        size: 40 + Math.random() * 80,
+        life: 0,
+        maxLife: 180 + Math.random() * 100,
+        color: CONFIG.colors[Math.floor(Math.random() * 3)]
+      };
+    }
+
+    function updateSteam() {
+      if (!activeLoops.steam) return;
+      const ctx = CTX.steam;
+
+      ctx.clearRect(0, 0, UI.steam.width, UI.steam.height);
+
+      if (steamParticles.length < 50 && Math.random() < 0.3) {
+        steamParticles.push(createSteamParticle());
+      }
+
+      for (let i = steamParticles.length - 1; i >= 0; i--) {
+        const p = steamParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life++;
+
+        let alpha = 0;
+        if (p.life < 50) alpha = p.life / 50;
+        else if (p.life > p.maxLife - 50) alpha = (p.maxLife - p.life) / 50;
+        else alpha = 1;
+
+        if (p.life >= p.maxLife || alpha <= 0) {
+          steamParticles.splice(i, 1);
+          continue;
+        }
+
+        ctx.globalAlpha = alpha * 0.15;
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+        g.addColorStop(0, p.color);
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(updateSteam);
+    }
+
+    // ==================== 加载动画系统 ====================
+    function initMatrix() {
+      const cols = Math.ceil(UI.matrix.width / 16);
+      matrixDrops = new Array(cols).fill(1);
+    }
+
+    function drawMatrix() {
+      if (!activeLoops.loading) return;
+      const ctx = CTX.matrix;
+      const w = UI.matrix.width;
+      const h = UI.matrix.height;
+
+      ctx.fillStyle = 'rgba(10, 8, 5, 0.08)';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.font = '14px JetBrains Mono';
+
+      for (let i = 0; i < matrixDrops.length; i++) {
+        const char = String.fromCharCode(0x4E00 + Math.floor(Math.random() * 1000));
+        ctx.fillStyle = CONFIG.colors[Math.floor(Math.random() * 3)];
+        ctx.globalAlpha = 0.3 + Math.random() * 0.7;
+        ctx.fillText(char, i * 16, matrixDrops[i] * 16);
+
+        if (matrixDrops[i] * 16 > h && Math.random() > 0.98) {
+          matrixDrops[i] = 0;
+        }
+        matrixDrops[i]++;
+      }
+
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(drawMatrix);
+    }
+
+    // ==================== 抽签流程控制 ====================
+    async function startLottery() {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      // 隐藏首页
+      document.querySelector('.screen.active').classList.remove('visible');
+
+      // 加载动画
+      await showLoading();
+
+      // 显示摇签界面
+      await switchToScreen('screen2');
+
+      // 重置状态
+      UI.cylinder.classList.remove('shaking');
+      UI.shakingText.textContent = '点击下方按钮开始摇签';
+      UI.shakeBtn.style.display = 'block';
+      UI.dust.style.opacity = '1';
+
+      isAnimating = false;
+    }
+
+    async function shakeLottery() {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      // 隐藏按钮，开始摇签
+      UI.shakeBtn.style.display = 'none';
+      UI.shakingText.textContent = '摇签中...';
+
+      // 强制触发重绘
+      UI.cylinder.offsetHeight;
+
+      // 添加动画类
+      UI.cylinder.classList.add('shaking');
+
+      // 额外保险：使用 inline style 强制应用动画
+      UI.cylinder.style.animation = 'cylinder-shake 0.6s ease-in-out infinite';
+
+      // 摇签 3 秒
+      await new Promise(r => setTimeout(r, 3000));
+
+      // 停止摇签
+      UI.cylinder.classList.remove('shaking');
+      UI.cylinder.style.animation = '';
+      UI.shakingText.textContent = '签文显现...';
+
+      // 等待一下
+      await new Promise(r => setTimeout(r, 500));
+
+      // 淡出摇签界面
+      document.getElementById('screen2').classList.remove('visible');
+      UI.dust.style.opacity = '0';
+      UI.steam.style.opacity = '0';
+      activeLoops.steam = false;
+
+      await new Promise(r => setTimeout(r, 1200));
+      document.getElementById('screen2').classList.remove('active');
+
+      // 加载动画
+      await showLoading();
+
+      // 设置结果
+      const fortune = getRandomFortune();
+      UI.fortuneTitle.textContent = fortune.type + ' · ' + fortune.title;
+      UI.fortuneContent.textContent = fortune.content;
+      UI.fortunePoem.innerHTML = '"' + fortune.poem.replace(/\n/g, '<br>') + '"';
+
+      // 显示结果
+      await switchToScreen('screen4');
+      UI.dust.style.opacity = '1';
+
+      isAnimating = false;
+    }
+
+    // ==================== 初始化 ====================
+    function init() {
+      resizeCanvases();
+      updateDust();
+
+      // 事件绑定
+      UI.startBtn.addEventListener('click', startLottery);
+      UI.shakeBtn.addEventListener('click', shakeLottery);
+      UI.resetBtn.addEventListener('click', startLottery);
+      window.addEventListener('resize', debounce(resizeCanvases, 100));
+    }
+
+    // 启动应用
+    init();
+  </script>
+</body>
+</html>
